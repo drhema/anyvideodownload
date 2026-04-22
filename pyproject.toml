@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pyvid"
+version = "0.1.0"
+description = "Browser-intercept video downloader: progressive / HLS / DASH / Vimeo / TikTok / Twitch / Twitter / YouTube UMP / Instagram / Facebook + HTTP API"
+requires-python = ">=3.10"
+dependencies = [
+  "playwright>=1.49.0",
+  "httpx[http2]>=0.27.0",
+  "m3u8>=5.1.0",
+  "fastapi>=0.115.0",
+  "uvicorn[standard]>=0.32.0",
+  "pydantic>=2.9.0",
+]
+
+[project.scripts]
+pyvid = "pyvid.cli:main"
+pyvid-api = "pyvid.api.main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

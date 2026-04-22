@@ -1,0 +1,92 @@
+# Python --------------------------------------------------------------
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Packaging / builds
+*.egg-info/
+*.egg
+build/
+dist/
+sdist/
+wheels/
+.eggs/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Virtual envs
+.venv/
+venv/
+env/
+ENV/
+.python-version
+
+# Test / coverage / type-check caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+.hypothesis/
+
+# Jupyter / notebook artifacts
+.ipynb_checkpoints/
+
+# IDEs -----------------------------------------------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+
+# OS -------------------------------------------------------------------
+.DS_Store
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Playwright runtime (browsers are installed to /ms-playwright in Docker;
+# locally, Playwright stores them under ~/Library/Caches or ~/.cache)
+pw-browsers/
+playwright-report/
+test-results/
+
+# Project runtime outputs ---------------------------------------------
+downloads/
+pyvid-storage/
+captures/
+ump_fixtures/
+ump_captures/
+*.webm.bak
+_ytbuf/
+logs/
+*.log
+
+# Secrets / env — NEVER commit these
+.env
+.env.*
+!.env.example
+secrets/
+*.pem
+*.key
+*.crt
+
+# Docker-related transient files
+docker-compose.override.yml
+.docker-volume/
+
+# Node / JS (legacy from earlier Node-based sniffer tool)
+node_modules/
+package-lock.json
+
+# Editor temp
+*.tmp
+*.bak

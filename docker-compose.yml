@@ -1,0 +1,37 @@
+# Compatible with `docker compose up` and Portainer Stacks.
+#
+# Local Mac testing:     docker compose up --build
+# Production (Portainer): paste this file into a new Stack, set env vars
+#
+# IMPORTANT: before deploying publicly, change PYVID_API_TOKENS to something
+# that is not in version control. The default below is a local-dev value.
+
+services:
+  pyvid:
+    build: .
+    # Alternatively, after pushing to a registry, replace `build: .` with:
+    # image: your-registry.example.com/pyvid:latest
+    container_name: pyvid
+    restart: unless-stopped
+    ports:
+      - "${PYVID_HOST_PORT:-8000}:8000"
+    environment:
+      PYVID_API_TOKENS: "${PYVID_API_TOKENS:-change-me-local-dev}"
+      PYVID_CONCURRENCY: "${PYVID_CONCURRENCY:-1}"
+      PYVID_RATE_LIMIT: "${PYVID_RATE_LIMIT:-10}"
+    volumes:
+      # Downloaded files land here on the host. Change left side to taste.
+      - ./downloads:/data
+    # Chromium crashes on the default 64MB /dev/shm. Give it room.
+    shm_size: "1gb"
+    # Recommended resource hints; Portainer can override per stack.
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8000/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
