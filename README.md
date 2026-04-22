@@ -1,8 +1,18 @@
-# pyvid
+# Any Video Download
 
-Browser-intercept video downloader. Opens a real Chromium via Playwright, lets
-the page load and authenticate naturally, classifies the network traffic, and
-downloads whatever stream it finds using the browser's own cookies + headers.
+[![Build and publish Docker image](https://github.com/drhema/anyvideodownload/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/drhema/anyvideodownload/actions/workflows/docker-publish.yml)
+[![ghcr.io image](https://img.shields.io/badge/ghcr.io-drhema%2Fanyvideodownload-blue?logo=docker)](https://github.com/drhema/anyvideodownload/pkgs/container/anyvideodownload)
+
+Browser-intercept video downloader + HTTP API. Opens a real Chromium via
+Playwright, lets the page load and authenticate naturally, classifies the
+network traffic, and downloads whatever stream it finds using the browser's
+own cookies and headers.
+
+Runs as a single Docker container with a bearer-token-protected HTTP API.
+
+> The Python package inside this repo is named **`pyvid`** (`pip install` /
+> `import`); **"Any Video Download"** is the product name. References to
+> `pyvid` below are the package/CLI, not a different project.
 
 ## Status
 
@@ -20,17 +30,55 @@ downloads whatever stream it finds using the browser's own cookies + headers.
 | Facebook | ⚠️ module shipped (same fbcdn logic); requires URL that plays without login |
 | DRM (Widevine/PlayReady/FairPlay) | ❌ not supported, will not be |
 
-## Install
+## Quick start (prebuilt Docker image from GHCR)
+
+No build step, no Python setup. The image is auto-published from this repo
+to `ghcr.io/drhema/anyvideodownload` for **amd64 + arm64** on every push to
+`main`.
 
 ```bash
-cd /Users/dribrahimm/0-video-ai-platform/playwright/pyvid
+# Grab just the compose file + env template (or clone the repo)
+curl -O https://raw.githubusercontent.com/drhema/anyvideodownload/main/docker-compose.yml
+curl -O https://raw.githubusercontent.com/drhema/anyvideodownload/main/.env.example
+cp .env.example .env
+
+# Generate a strong bearer token and save it
+sed -i.bak "s/^PYVID_API_TOKENS=.*/PYVID_API_TOKENS=$(openssl rand -hex 32)/" .env
+rm .env.bak
+
+# Pull and start
+docker compose up -d
+docker compose logs -f
+```
+
+Verify:
+```bash
+curl http://127.0.0.1:8000/health
+# → {"ok":true,"auth_enabled":true,...}
+```
+
+Pin to a version (recommended for production):
+
+```yaml
+# docker-compose.yml
+services:
+  pyvid:
+    image: ghcr.io/drhema/anyvideodownload:0.1.0   # or :main for bleeding edge
+```
+
+## Install from source (development)
+
+```bash
+git clone https://github.com/drhema/anyvideodownload.git
+cd anyvideodownload
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e .
 playwright install chromium
 ```
 
-`ffmpeg` must be on PATH (`brew install ffmpeg`).
+`ffmpeg` must be on PATH (`brew install ffmpeg` on Mac, `apt install ffmpeg`
+on Ubuntu).
 
 ## Two ways to use it
 
@@ -284,53 +332,55 @@ sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin d
 sudo usermod -aG docker $USER
 ```
 
-#### 2. Get the code
+#### 2. Fetch `docker-compose.yml` + `.env.example`
+
+The prebuilt image on GHCR is multi-arch (amd64 + arm64), so no building on
+the server. Just grab the two compose files from the repo.
 
 ```bash
-sudo mkdir -p /opt/pyvid && sudo chown $USER:$USER /opt/pyvid
-cd /opt/pyvid
+sudo mkdir -p /opt/anyvideodownload && sudo chown $USER:$USER /opt/anyvideodownload
+cd /opt/anyvideodownload
 
-# Option A: clone from your git repo
-git clone <your-git-url> .
-
-# Option B: scp from your laptop
-# scp -r /path/to/pyvid user@server:/opt/pyvid/
+curl -O https://raw.githubusercontent.com/drhema/anyvideodownload/main/docker-compose.yml
+curl -O https://raw.githubusercontent.com/drhema/anyvideodownload/main/.env.example
 ```
+
+(Alternatively, `git clone https://github.com/drhema/anyvideodownload.git .`
+if you want the full source tree for later tweaks.)
 
 #### 3. Create a production `.env`
 
-**Do not commit this file.** It is in `.gitignore`.
+**Do not commit this file.** It's in `.gitignore`.
 
 ```bash
-cd /opt/pyvid
-cat > .env <<'EOF'
-# Strong token — generate with: openssl rand -hex 32
-PYVID_API_TOKENS=CHANGEME-USE-openssl-rand-hex-32
-
-# Bind only to loopback; let the reverse proxy terminate TLS
-PYVID_HOST_PORT=127.0.0.1:8000
-
-# Keep low unless you have the RAM — each worker is a full Chromium
-PYVID_CONCURRENCY=1
-
-# Per-token sliding window
-PYVID_RATE_LIMIT=30
-EOF
-chmod 600 .env
-```
-
-Regenerate the token:
-```bash
+cd /opt/anyvideodownload
+cp .env.example .env
 sed -i "s/^PYVID_API_TOKENS=.*/PYVID_API_TOKENS=$(openssl rand -hex 32)/" .env
+chmod 600 .env
+cat .env
 ```
 
-#### 4. Build + start
+Edit `.env` to adjust concurrency / rate limit as needed. The defaults
+(1 worker, 30 req/min) are safe for a 2-vCPU / 2-GB server.
+
+#### 4. Pin a version (recommended for production)
+
+Edit `docker-compose.yml` and change `:latest` to a specific tag:
+
+```yaml
+image: ghcr.io/drhema/anyvideodownload:0.1.0    # or :main for bleeding edge
+```
+
+See [available tags](https://github.com/drhema/anyvideodownload/pkgs/container/anyvideodownload).
+
+#### 5. Pull + start
 
 ```bash
-cd /opt/pyvid
-docker compose up -d --build
+cd /opt/anyvideodownload
+docker compose pull          # fetch the image from GHCR
+docker compose up -d
 docker compose ps
-docker compose logs -f   # Ctrl-C to exit; container keeps running
+docker compose logs -f       # Ctrl-C to exit; container keeps running
 ```
 
 Healthcheck:
@@ -348,7 +398,22 @@ curl -X POST http://127.0.0.1:8000/download \
   -d '{"url":"https://www.tiktok.com/@bellapoarch/video/6862153058223197445"}'
 ```
 
-#### 5. Reverse proxy with TLS (Caddy — simplest)
+Healthcheck:
+```bash
+curl -s http://127.0.0.1:8000/health
+# → {"ok":true,"auth_enabled":true,...}
+```
+
+Quick end-to-end test (replace TOKEN):
+```bash
+TOKEN=$(grep PYVID_API_TOKENS .env | cut -d= -f2)
+curl -X POST http://127.0.0.1:8000/download \
+  -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"url":"https://www.tiktok.com/@bellapoarch/video/6862153058223197445"}'
+```
+
+#### 6. Reverse proxy with TLS (Caddy — simplest)
 
 Caddy auto-provisions Let's Encrypt certificates. No manual certbot needed.
 
@@ -385,7 +450,7 @@ If you're using **Traefik** or **Nginx** instead, similar idea — proxy
 DNS: point `pyvid.your-domain.com` A record at the server's public IP.
 Caddy will fetch a TLS cert on first request (takes ~5 seconds).
 
-#### 6. Firewall
+#### 7. Firewall
 
 ```bash
 # Only allow SSH + HTTPS from the public internet
@@ -399,7 +464,7 @@ sudo ufw enable
 pyvid listens on `127.0.0.1:8000` only — never exposed to the public internet
 directly. All external traffic goes through Caddy on :443.
 
-#### 7. Portainer (optional UI)
+#### 8. Portainer (optional UI)
 
 Portainer is just a Docker UI — install it alongside:
 
@@ -425,17 +490,32 @@ portainer.your-domain.com {
 
 In Portainer:
 - **Stacks → Add stack → Web editor**
-- Paste the contents of `docker-compose.yml` (edit `build: .` to
-  `image: your-registry/pyvid:0.1.0` if you're pulling from a registry)
-- Set env vars under **Environment variables** (mirrors `.env` above)
+- Paste the contents of `docker-compose.yml` from the repo. It already
+  references `ghcr.io/drhema/anyvideodownload:latest` — no edits required.
+- Set env vars under **Environment variables** (mirrors `.env` above:
+  `PYVID_API_TOKENS`, `PYVID_HOST_PORT`, `PYVID_CONCURRENCY`, `PYVID_RATE_LIMIT`)
 - Click **Deploy the stack**
+- (Optional) Check **Automatic updates** → Portainer will `docker compose pull`
+  on a schedule and restart when a new image tag lands on GHCR.
+
+**Public vs private package**: GHCR packages default to **private**. The
+first time Portainer or your Ubuntu server tries to `docker pull`, it'll
+get `unauthorized`. Two fixes:
+
+- **Make the package public**: GitHub → your profile → Packages →
+  `anyvideodownload` → Package settings → Change visibility → Public.
+- **Or keep it private** and authenticate on the Ubuntu host:
+  ```bash
+  # Personal Access Token with `read:packages` scope
+  echo <your-PAT> | docker login ghcr.io -u drhema --password-stdin
+  ```
 
 ### Operations
 
 #### Logs
 
 ```bash
-cd /opt/pyvid
+cd /opt/anyvideodownload
 docker compose logs -f              # live tail
 docker compose logs --tail 200      # last 200 lines
 docker compose logs --since 1h      # last hour
@@ -445,14 +525,27 @@ Caddy logs: `/var/log/caddy/pyvid.log`.
 
 #### Updates
 
+Pull the latest image from GHCR and restart:
+
 ```bash
-cd /opt/pyvid
-git pull                            # or scp the new code
-docker compose up -d --build        # rebuild + restart
+cd /opt/anyvideodownload
+docker compose pull           # fetch latest :latest (or whatever tag you pinned)
+docker compose up -d          # recreate container if image digest changed
+docker image prune -f         # optional: free disk from old layers
 ```
 
 Downtime is ~15 seconds while Chromium starts. In-flight jobs are lost
 (no queue persistence yet — that's on the roadmap).
+
+For hands-off updates: Portainer has an **"Automatic updates"** toggle on
+each stack that does `docker compose pull` on a schedule. Watchtower is
+another option if you prefer it outside Portainer:
+
+```bash
+docker run -d --name watchtower --restart unless-stopped \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  containrrr/watchtower --interval 3600 pyvid
+```
 
 #### Backups
 
@@ -461,7 +554,7 @@ files in `./downloads/` can be re-fetched by resubmitting the URL.
 
 ```bash
 # Backup token file to a secure location
-scp /opt/pyvid/.env admin@backup.example.com:/secure/backups/pyvid-$(date +%F).env
+scp /opt/anyvideodownload/.env admin@backup.example.com:/secure/backups/pyvid-$(date +%F).env
 ```
 
 #### Cleanup (disk hygiene)
@@ -472,8 +565,8 @@ No automatic cleanup yet. If downloads pile up, add a cron job:
 # Delete files older than 24h from the downloads volume
 sudo crontab -e
 # Add:
-0 * * * * find /opt/pyvid/downloads -type f -mtime +1 -delete
-0 * * * * find /opt/pyvid/downloads -type d -empty -delete
+0 * * * * find /opt/anyvideodownload/downloads -type f -mtime +1 -delete
+0 * * * * find /opt/anyvideodownload/downloads -type d -empty -delete
 ```
 
 Or trigger via the API: `DELETE /jobs/{id}` removes both the job record

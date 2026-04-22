@@ -8,9 +8,12 @@
 
 services:
   pyvid:
+    # Default: pull the prebuilt multi-arch image from GHCR.
+    # For local-only builds, either:
+    #   1. Run `docker compose build` (tags the local build as this image name), OR
+    #   2. Comment out `image:` and uncomment `build:` below.
+    image: ghcr.io/drhema/anyvideodownload:latest
     build: .
-    # Alternatively, after pushing to a registry, replace `build: .` with:
-    # image: your-registry.example.com/pyvid:latest
     container_name: pyvid
     restart: unless-stopped
     ports:
